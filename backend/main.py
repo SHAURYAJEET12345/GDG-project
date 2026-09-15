@@ -77,7 +77,8 @@ attendance_table = sa.Table(
     sa.Column("confidence", sa.Float,   nullable=False),
     sa.Column("status",     sa.String,  nullable=False),  # "present" | "unknown" | "spoof"
 )
-metadata.create_all(engine)
+# NOTE: metadata.create_all() is called inside lifespan() so the correct
+# DB_PATH env-var is guaranteed to be resolved before the engine is used.
 
 # ---------------------------------------------------------------------------
 # Shared in-memory state
@@ -95,6 +96,10 @@ async def lifespan(app: FastAPI):
 
     logger.info("Loading known faces from: %s", KNOWN_FACES_DIR)
     face_db = load_known_faces(KNOWN_FACES_DIR)
+
+    # Create DB tables now that env-vars are confirmed loaded
+    metadata.create_all(engine)
+    logger.info("Database ready at: %s", DB_PATH)
 
     logger.info("Initialising liveness detector (predictor: %s)", PREDICTOR_PATH)
     try:

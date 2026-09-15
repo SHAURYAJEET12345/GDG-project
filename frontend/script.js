@@ -53,7 +53,7 @@ const registerMsg       = document.getElementById('register-msg');
 const btnCaptureReg     = document.getElementById('btn-capture-register');
 const btnModalClose     = document.getElementById('btn-modal-close');
 
-const toast             = document.getElementById('toast');
+const toastEl        = document.getElementById('toast');
 const toastContent      = document.getElementById('toast-content');
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -84,9 +84,9 @@ function showToast(msg, type = 'info') {
   };
   toastContent.className = `glassmorphism border border-white/10 rounded-xl px-5 py-3 text-sm font-medium shadow-xl ${colors[type] ?? colors.info}`;
   toastContent.textContent = msg;
-  toast.classList.add('show');
+  toastEl.classList.add('show');
   clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => toast.classList.remove('show'), 3500);
+  toastTimeout = setTimeout(() => toastEl.classList.remove('show'), 3500);
 }
 
 function setSystemStatus(online) {

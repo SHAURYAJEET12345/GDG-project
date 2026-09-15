@@ -5,6 +5,8 @@ Uses dlib's 68-point facial landmark predictor to compute per-eye EAR and
 detect genuine blinks, preventing spoofing via static photos or replay videos.
 """
 
+from __future__ import annotations
+
 import numpy as np
 from scipy.spatial import distance as dist
 from collections import deque

@@ -2,12 +2,14 @@
 
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 1 — Builder
-# Compile dlib and install heavy Python deps with build tools present.
-# This stage is discarded; only installed packages are copied forward.
+# • Installs build tools (cmake, boost, etc.) needed to compile dlib
+# • Installs all Python packages into /install/deps
+# • Downloads the dlib 68-point shape predictor model
+# The builder image is discarded; only its outputs are copied to runtime.
 # ──────────────────────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS builder
 
-# System build deps (cmake needed by dlib)
+# System build deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -19,22 +21,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libboost-thread-dev \
     git \
     wget \
+    bzip2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /install
 
-# Copy requirements and install into a prefix we can COPY later
+# Install Python packages into a relocatable prefix
 COPY backend/requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --prefix=/install/deps --no-cache-dir -r requirements.txt
 
+# Download dlib shape predictor in builder so the runtime image needs no wget/bzip2
+RUN wget -q \
+    "https://github.com/davisking/dlib-models/raw/master/shape_predictor_68_face_landmarks.dat.bz2" \
+    -O /tmp/sp.dat.bz2 && \
+    bunzip2 /tmp/sp.dat.bz2 && \
+    mv /tmp/sp.dat /install/shape_predictor_68_face_landmarks.dat
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 2 — Runtime
-# Lean final image: only runtime libs + our app code.
+# Lean final image: no build tools, no wget, no cmake.
 # ──────────────────────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
-# Runtime shared libs required by OpenCV & dlib, plus curl for healthcheck
+# Runtime shared libs required by OpenCV & dlib + curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libopenblas-base \
     libgomp1 \
@@ -46,34 +57,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed Python packages from builder
+# Copy Python packages from builder
 COPY --from=builder /install/deps /usr/local
 
 WORKDIR /app
 
-# Copy backend source
+# Copy backend source code
 COPY backend/ ./backend/
 
-# Download dlib shape predictor (68-point model) at build time so the
-# container is self-contained (no internet needed at runtime).
-RUN wget -q \
-    "https://github.com/davisking/dlib-models/raw/master/shape_predictor_68_face_landmarks.dat.bz2" \
-    -O /tmp/sp.dat.bz2 && \
-    bunzip2 /tmp/sp.dat.bz2 && \
-    mv /tmp/sp.dat /app/backend/shape_predictor_68_face_landmarks.dat
+# Copy the dlib model from builder (no wget needed in runtime)
+COPY --from=builder /install/shape_predictor_68_face_landmarks.dat \
+    /app/backend/shape_predictor_68_face_landmarks.dat
 
-# Create directories for persistent data
-RUN mkdir -p /app/known_faces
+# Create data directory for SQLite DB (separate from source code)
+RUN mkdir -p /app/data /app/known_faces
 
-# Environment defaults (can be overridden via docker-compose env)
+# Environment defaults — override via docker-compose environment section
 ENV KNOWN_FACES_DIR=/app/known_faces \
     PREDICTOR_PATH=/app/backend/shape_predictor_68_face_landmarks.dat \
-    DB_PATH=/app/backend/database.db \
+    DB_PATH=/app/data/database.db \
     PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-# Run uvicorn from /app so that `backend.main` resolves correctly
-# and intra-package imports (recognition, liveness) work via PYTHONPATH.
 CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

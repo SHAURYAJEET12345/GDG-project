@@ -13,20 +13,23 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Persist SQLite attendance database
-      - ./backend/database.db:/app/backend/database.db
-      # Mount known faces so you can add/update without rebuilding
+      # Named volume for the backend dir so SQLite DB is a file, not a dir.
+      # (Bind-mounting a non-existent file makes Docker create it as a folder,
+      #  which breaks SQLite. A named volume avoids that entirely.)
+      - db_data:/app/backend
+      # Mount known faces so faces can be added without rebuilding the image.
       - ./known_faces:/app/known_faces
     environment:
       KNOWN_FACES_DIR: /app/known_faces
       PREDICTOR_PATH:  /app/backend/shape_predictor_68_face_landmarks.dat
       DB_PATH:         /app/backend/database.db
+      PYTHONPATH:      /app
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 20s
     networks:
       - attendance_net
 
@@ -45,6 +48,10 @@ services:
         condition: service_healthy
     networks:
       - attendance_net
+
+volumes:
+  db_data:
+    driver: local
 
 networks:
   attendance_net:

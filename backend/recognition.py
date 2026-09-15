@@ -9,10 +9,10 @@ Workflow
     encodings, compare against the known set, and return the best match.
 """
 
-import os
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Optional
 
 import cv2
 import numpy as np

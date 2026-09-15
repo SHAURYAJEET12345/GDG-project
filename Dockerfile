@@ -34,7 +34,7 @@ RUN pip install --upgrade pip && \
 # ──────────────────────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
-# Runtime shared libs required by OpenCV & dlib
+# Runtime shared libs required by OpenCV & dlib, plus curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libopenblas-base \
     libgomp1 \
@@ -43,6 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender-dev \
     libgl1 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed Python packages from builder
@@ -68,8 +69,11 @@ RUN mkdir -p /app/known_faces
 ENV KNOWN_FACES_DIR=/app/known_faces \
     PREDICTOR_PATH=/app/backend/shape_predictor_68_face_landmarks.dat \
     DB_PATH=/app/backend/database.db \
+    PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
+# Run uvicorn from /app so that `backend.main` resolves correctly
+# and intra-package imports (recognition, liveness) work via PYTHONPATH.
 CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

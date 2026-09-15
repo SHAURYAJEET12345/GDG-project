@@ -8,10 +8,9 @@ detect genuine blinks, preventing spoofing via static photos or replay videos.
 from __future__ import annotations
 
 from collections import deque
-from typing import Deque
 
 import cv2
-import dlib
+import dlib  # type: ignore[import-untyped]
 import numpy as np
 from scipy.spatial import distance as dist
 
@@ -44,7 +43,7 @@ def _eye_aspect_ratio(eye_landmarks: np.ndarray) -> float:
     return float((A + B) / (2.0 * C))
 
 
-def landmarks_to_np(shape, dtype: type = np.float64) -> np.ndarray:
+def landmarks_to_np(shape: dlib.full_object_detection, dtype: np.typing.DTypeLike = np.float64) -> np.ndarray:
     """
     Convert a dlib full_object_detection shape to a (68, 2) NumPy array.
 
@@ -85,7 +84,7 @@ class LivenessDetector:
         self.ear_consec_frames = ear_consec_frames
 
         # Rolling EAR history for temporal smoothing
-        self._ear_history: Deque[float] = deque(maxlen=5)
+        self._ear_history: deque[float] = deque(maxlen=5)
         self._consec_below: int  = 0
         self._blink_count:  int  = 0
         self._is_live:      bool = False

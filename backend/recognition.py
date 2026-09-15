@@ -16,7 +16,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import face_recognition
+import face_recognition  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 

@@ -25,6 +25,7 @@ and attempt to push to the configured GitHub repository.
 from __future__ import annotations
 
 import os
+import importlib
 import subprocess
 import sys
 import textwrap
@@ -32,8 +33,25 @@ from pathlib import Path
 from typing import TypedDict, Annotated, Sequence
 import operator
 
-from langgraph.graph import StateGraph, END
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+try:
+  _graph = importlib.import_module("langgraph.graph")
+  StateGraph = _graph.StateGraph
+  END = _graph.END
+except (ImportError, AttributeError) as exc:
+  raise ImportError(
+    "LangGraph is not installed in the active Python environment. "
+    "Run: python -m pip install -U langgraph"
+  ) from exc
+try:
+  _messages = importlib.import_module("langchain_core.messages")
+  BaseMessage = _messages.BaseMessage
+  HumanMessage = _messages.HumanMessage
+  AIMessage = _messages.AIMessage
+except (ImportError, AttributeError) as exc:
+  raise ImportError(
+    "LangChain Core is not installed in the active Python environment. "
+    "Run: python -m pip install -U langchain-core"
+  ) from exc
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Configuration

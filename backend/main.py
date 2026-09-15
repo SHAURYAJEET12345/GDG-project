@@ -97,7 +97,11 @@ async def lifespan(app: FastAPI):
     global face_db, liveness_detector
 
     logger.info("Loading known faces from: %s", KNOWN_FACES_DIR)
-    face_db = load_known_faces(KNOWN_FACES_DIR)
+    try:
+        face_db = load_known_faces(KNOWN_FACES_DIR)
+    except RuntimeError as exc:
+        logger.warning("Face-recognition dependency unavailable: %s", exc)
+        face_db = FaceDatabase()
 
     # Create DB tables now that env-vars are confirmed loaded
     metadata.create_all(engine)
@@ -190,8 +194,8 @@ def _log_attendance(name: str, confidence: float, status: str) -> None:
 @app.get("/", tags=["Health"])
 async def health():
     return {
-        "status":           "ok",
-        "known_faces":      len(face_db),
+        "status": "ok" if face_db is not None else "degraded",
+        "known_faces": len(face_db) if face_db is not None else 0,
         "liveness_detector": liveness_detector is not None,
     }
 
@@ -199,12 +203,20 @@ async def health():
 @app.post("/register", tags=["Registration"])
 async def register(payload: RegisterPayload):
     """Register a new face into the system from a base64 image."""
+    if face_db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Face recognition dependencies are not installed. Install backend/requirements.txt first.",
+        )
     try:
         frame = _decode_b64_image(payload.image)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}")
 
-    result = register_face(frame, payload.name, KNOWN_FACES_DIR, face_db)
+    try:
+        result = register_face(frame, payload.name, KNOWN_FACES_DIR, face_db)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     if not result["success"]:
         raise HTTPException(status_code=422, detail=result["message"])
     return result
@@ -236,7 +248,15 @@ async def verify(payload: FramePayload):
         liveness_result = liveness_detector.process_frame(frame)
 
     # --- Recognition ---
-    recognition_results = identify_faces(frame, face_db)
+    if face_db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Face recognition dependencies are not installed. Install backend/requirements.txt first.",
+        )
+    try:
+        recognition_results = identify_faces(frame, face_db)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     # --- Attendance logging ---
     logged: list[str] = []

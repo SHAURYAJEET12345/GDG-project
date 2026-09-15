@@ -10,9 +10,16 @@ from __future__ import annotations
 from collections import deque
 
 import cv2
-import dlib  # type: ignore[import-untyped]
 import numpy as np
 from scipy.spatial import distance as dist
+
+try:
+    import dlib  # type: ignore[import-untyped]
+except ModuleNotFoundError as exc:  # pragma: no cover - handled at runtime
+    dlib = None  # type: ignore[assignment]
+    _IMPORT_ERROR = exc
+else:
+    _IMPORT_ERROR = None
 
 # ---------------------------------------------------------------------------
 # Landmark indices (iBUG 68-point model)
@@ -76,6 +83,12 @@ class LivenessDetector:
         ear_threshold: float = EAR_THRESHOLD,
         ear_consec_frames: int = EAR_CONSEC_FRAMES,
     ) -> None:
+        if dlib is None:
+            raise RuntimeError(
+                "dlib is not installed. Install the backend requirements from "
+                "backend/requirements.txt before starting the app."
+            ) from _IMPORT_ERROR
+
         self.detector  = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(predictor_path)
 

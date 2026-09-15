@@ -16,7 +16,14 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import face_recognition  # type: ignore[import-untyped]
+
+try:
+    import face_recognition  # type: ignore[import-untyped]
+except ModuleNotFoundError as exc:  # pragma: no cover - handled at runtime
+    face_recognition = None  # type: ignore[assignment]
+    _IMPORT_ERROR = exc
+else:
+    _IMPORT_ERROR = None
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +56,15 @@ class FaceDatabase:
 # ---------------------------------------------------------------------------
 # Loading helpers
 # ---------------------------------------------------------------------------
+def _require_face_recognition() -> None:
+    """Raise a clear error if the optional face-recognition dependency is missing."""
+    if face_recognition is None:
+        raise RuntimeError(
+            "face_recognition is not installed. Install the backend requirements "
+            "from backend/requirements.txt and use Python 3.11 before running this app."
+        ) from _IMPORT_ERROR
+
+
 def load_known_faces(known_faces_dir: str | Path) -> FaceDatabase:
     """
     Scan *known_faces_dir* for images and build a FaceDatabase.
@@ -57,6 +73,7 @@ def load_known_faces(known_faces_dir: str | Path) -> FaceDatabase:
         John_Doe.jpg   →  name = "John Doe"  (underscores become spaces)
         alice.png      →  name = "alice"
     """
+    _require_face_recognition()
     db = FaceDatabase()
     known_faces_dir = Path(known_faces_dir)
 
@@ -125,6 +142,8 @@ def identify_faces(
             "matched":    bool,
         }
     """
+    _require_face_recognition()
+
     # face_recognition expects RGB
     frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
 
@@ -186,6 +205,7 @@ def register_face(
 
     Returns dict with "success" bool and "message" str.
     """
+    _require_face_recognition()
     known_faces_dir = Path(known_faces_dir)
     known_faces_dir.mkdir(parents=True, exist_ok=True)
 

@@ -23,7 +23,7 @@ import base64
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import cv2
@@ -38,8 +38,10 @@ try:
     # Package mode: uvicorn backend.main:app  (PYTHONPATH=/app)
     from backend.recognition import FaceDatabase, load_known_faces, identify_faces, register_face
     from backend.liveness import LivenessDetector
-except ImportError:
+except ModuleNotFoundError:
     # Local dev mode: python main.py  (cwd = backend/)
+    # Only catch ModuleNotFoundError (missing module), NOT broader ImportError
+    # which would mask real errors like broken packages.
     from recognition import FaceDatabase, load_known_faces, identify_faces, register_face  # type: ignore
     from liveness import LivenessDetector  # type: ignore
 
@@ -163,7 +165,7 @@ def _decode_b64_image(b64_str: str) -> np.ndarray:
 
 def _log_attendance(name: str, confidence: float, status: str) -> None:
     """Insert an attendance record, deduplicating within the same minute."""
-    ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     with engine.begin() as conn:
         existing = conn.execute(
             text(
@@ -243,16 +245,15 @@ async def verify(payload: FramePayload):
             status = "present" if r["matched"] else "unknown"
             _log_attendance(r["name"], r["confidence"], status)
             logged.append(r["name"])
-    elif not liveness_result["is_live"] and recognition_results:
-        # Possible spoof — log for auditing but don't mark present
-        for r in recognition_results:
-            _log_attendance(r.get("name", "Unknown"), r["confidence"], "spoof")
+    # NOTE: We do NOT log unverified frames as "spoof" — every frame before
+    # blink confirmation would be falsely flagged. Spoof logging belongs in
+    # a dedicated anti-spoofing pipeline, not the per-frame verify loop.
 
     return {
         "liveness":    liveness_result,
         "recognition": recognition_results,
         "logged":      logged,
-        "frame_time":  datetime.utcnow().isoformat(),
+        "frame_time":  datetime.now(timezone.utc).isoformat(),
     }
 
 

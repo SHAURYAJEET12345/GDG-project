@@ -1,0 +1,202 @@
+/* style.css — Custom extensions on top of Tailwind CDN */
+
+/* ── Variables ── */
+:root {
+  --brand:    #6366f1;
+  --brand-glow: rgba(99, 102, 241, 0.25);
+  --live:     #10b981;
+  --spoof:    #ef4444;
+  --unknown:  #f59e0b;
+  --glass-bg: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+}
+
+/* ── Glassmorphism ── */
+.glassmorphism {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+.glass-panel {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transition: box-shadow 0.3s ease;
+}
+
+.glass-panel:hover {
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+}
+
+/* ── Stat cards ── */
+.stat-card {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  backdrop-filter: blur(12px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #f9fafb;
+}
+
+/* ── Action buttons ── */
+.action-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:active {
+  transform: scale(0.95);
+}
+
+/* ── Corner brackets on video ── */
+.corner-bracket {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: rgba(99,102,241,0.6);
+  transition: border-color 0.3s ease;
+}
+
+/* ── Liveness badge ── */
+.liveness-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.3s ease;
+}
+
+.badge-pending  { background: rgba(107,114,128,0.2); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+.badge-checking { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); animation: pulse 1.5s infinite; }
+.badge-live     { background: rgba(16,185,129,0.15); color: #10b981;  border: 1px solid rgba(16,185,129,0.35); }
+.badge-spoof    { background: rgba(239, 68, 68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+
+/* ── Blink dots ── */
+.blink-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #374151;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.blink-dot.done {
+  background: var(--live);
+  box-shadow: 0 0 8px rgba(16,185,129,0.6);
+}
+
+/* ── Table ── */
+.th-cell {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #6b7280;
+}
+
+.td-cell {
+  padding: 0.65rem 1rem;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.8rem;
+  color: #d1d5db;
+  transition: background 0.15s ease;
+}
+
+tbody tr:hover .td-cell {
+  background: rgba(255,255,255,0.025);
+}
+
+/* ── Status pills ── */
+.status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pill-present { background: rgba(16,185,129,0.15);  color: #10b981; }
+.pill-unknown { background: rgba(245,158,11,0.15);  color: #f59e0b; }
+.pill-spoof   { background: rgba(239,68,68,0.15);   color: #ef4444; }
+
+/* ── Recognition result card ── */
+.rec-result-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.25s ease;
+  animation: slideUp 0.35s ease-out forwards;
+}
+
+/* ── Scan line animation ── */
+@keyframes scanMove {
+  0%   { top: 0%; opacity: 0.7; }
+  50%  { opacity: 1; }
+  100% { top: 100%; opacity: 0.7; }
+}
+
+#scan-line.active {
+  display: block !important;
+  animation: scanMove 2.5s linear infinite;
+}
+
+/* ── Toast ── */
+#toast.show {
+  display: block !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ── Keyframes (referenced by Tailwind config) ── */
+@keyframes fadeIn  { from { opacity:0 } to { opacity:1 } }
+@keyframes slideUp { from { transform:translateY(12px);opacity:0 } to { transform:translateY(0);opacity:1 } }
+@keyframes pulse   { 0%,100%{ opacity:1 } 50%{ opacity:0.5 } }

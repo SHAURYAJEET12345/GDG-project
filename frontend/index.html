@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Attendance System — Liveness Detection</title>
+  <meta name="description" content="AI-powered attendance system with real-time face recognition and blink-based liveness detection to prevent spoofing." />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { inter: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: {
+              50:  '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#1e1b4b',
+            },
+            live:   '#10b981',
+            spoof:  '#ef4444',
+            unknown:'#f59e0b',
+          },
+          animation: {
+            'pulse-slow':  'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
+            'fade-in':     'fadeIn 0.4s ease-out forwards',
+            'slide-up':    'slideUp 0.35s ease-out forwards',
+            'scan':        'scan 2.5s linear infinite',
+          },
+          keyframes: {
+            fadeIn:  { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
+            slideUp: { '0%': { transform: 'translateY(12px)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } },
+            scan:    { '0%': { top: '0%' }, '100%': { top: '100%' } },
+          },
+        },
+      },
+    };
+  </script>
+</head>
+
+<body class="font-inter bg-gray-950 text-gray-100 min-h-screen">
+
+  <!-- ── NAVBAR ── -->
+  <nav class="sticky top-0 z-50 glassmorphism border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg shadow-brand-500/30">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </div>
+        <span class="text-lg font-bold tracking-tight bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent">AttendAI</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="system-status" class="flex items-center gap-2 text-sm text-gray-400">
+          <span class="w-2 h-2 rounded-full bg-gray-500 animate-pulse" id="status-dot"></span>
+          <span id="status-text">Connecting…</span>
+        </span>
+        <button id="btn-register-toggle" class="px-4 py-2 text-sm font-medium rounded-lg border border-brand-500/50 text-brand-400 hover:bg-brand-500/10 transition-all duration-200">
+          ＋ Register Face
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── REGISTER MODAL ── -->
+  <div id="register-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+    <div class="bg-gray-900 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-slide-up">
+      <h3 class="text-xl font-bold mb-4 text-white">Register New Face</h3>
+      <div class="relative mb-4 rounded-xl overflow-hidden bg-gray-800 aspect-video flex items-center justify-center">
+        <video id="register-video" autoplay playsinline class="w-full h-full object-cover"></video>
+        <canvas id="register-canvas" class="hidden"></canvas>
+      </div>
+      <input id="register-name" type="text" placeholder="Full name (e.g. John Doe)"
+        class="w-full bg-gray-800 border border-white/10 rounded-lg px-4 py-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-brand-500 text-white placeholder-gray-500" />
+      <div class="flex gap-3">
+        <button id="btn-capture-register" class="flex-1 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 font-semibold text-sm transition-all duration-200 active:scale-95">
+          📸 Capture &amp; Register
+        </button>
+        <button id="btn-modal-close" class="px-4 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold text-sm transition-all duration-200">
+          Cancel
+        </button>
+      </div>
+      <p id="register-msg" class="mt-3 text-sm text-center text-gray-400 min-h-[1.25rem]"></p>
+    </div>
+  </div>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="max-w-7xl mx-auto px-6 py-8">
+
+    <!-- Hero stats row -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 animate-fade-in">
+      <div class="stat-card">
+        <p class="stat-label">Total Records</p>
+        <p class="stat-value" id="stat-total">—</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Present Today</p>
+        <p class="stat-value text-live" id="stat-present">—</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Spoof Attempts</p>
+        <p class="stat-value text-spoof" id="stat-spoof">—</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Known Faces</p>
+        <p class="stat-value text-brand-400" id="stat-known">—</p>
+      </div>
+    </div>
+
+    <!-- Two-column layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- ── LEFT: WEBCAM PANEL ── -->
+      <div class="glass-panel flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-white">Live Camera Feed</h2>
+          <div class="flex gap-2">
+            <button id="btn-start" class="action-btn bg-live/20 text-live border-live/30 hover:bg-live/30">▶ Start</button>
+            <button id="btn-stop"  class="action-btn bg-spoof/20 text-spoof border-spoof/30 hover:bg-spoof/30 hidden">■ Stop</button>
+          </div>
+        </div>
+
+        <!-- Video container -->
+        <div class="relative rounded-2xl overflow-hidden bg-gray-900 aspect-video border border-white/5">
+          <video id="webcam-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+          <canvas id="capture-canvas" class="hidden"></canvas>
+
+          <!-- Scan line overlay -->
+          <div id="scan-line" class="absolute left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-brand-400/70 to-transparent hidden" style="pointer-events:none;"></div>
+
+          <!-- Corner brackets -->
+          <div class="corner-bracket top-3 left-3 border-t-2 border-l-2"></div>
+          <div class="corner-bracket top-3 right-3 border-t-2 border-r-2"></div>
+          <div class="corner-bracket bottom-3 left-3 border-b-2 border-l-2"></div>
+          <div class="corner-bracket bottom-3 right-3 border-b-2 border-r-2"></div>
+
+          <!-- Idle overlay -->
+          <div id="idle-overlay" class="absolute inset-0 flex flex-col items-center justify-center gap-3">
+            <div class="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.069A1 1 0 0121 8.883v6.234a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+            </div>
+            <p class="text-gray-500 text-sm">Press ▶ Start to begin verification</p>
+          </div>
+        </div>
+
+        <!-- Liveness status bar -->
+        <div class="rounded-xl bg-gray-900 border border-white/5 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Liveness Check</span>
+            <span id="liveness-badge" class="liveness-badge badge-pending">Waiting…</span>
+          </div>
+          <p id="liveness-message" class="text-sm text-gray-400">Start the camera to begin.</p>
+
+          <!-- Blink progress dots -->
+          <div class="flex items-center gap-2 mt-3">
+            <span class="text-xs text-gray-500">Blinks:</span>
+            <div id="blink-dots" class="flex gap-1.5">
+              <span class="blink-dot" id="dot-0"></span>
+              <span class="blink-dot" id="dot-1"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recognition result -->
+        <div id="recognition-panel" class="rounded-xl bg-gray-900 border border-white/5 p-4 hidden">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Recognition</p>
+          <div id="recognition-results" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- ── RIGHT: ATTENDANCE LOG ── -->
+      <div class="glass-panel flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-white">Attendance Log</h2>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-gray-500" id="last-refresh">—</span>
+            <button id="btn-clear" class="action-btn bg-spoof/10 text-spoof border-spoof/20 hover:bg-spoof/20 text-xs">🗑 Clear</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto rounded-xl border border-white/5 bg-gray-900">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-white/5">
+                <th class="th-cell">Name</th>
+                <th class="th-cell">Time</th>
+                <th class="th-cell">Conf.</th>
+                <th class="th-cell">Status</th>
+              </tr>
+            </thead>
+            <tbody id="attendance-tbody">
+              <tr id="empty-row">
+                <td colspan="4" class="py-12 text-center text-gray-600 text-sm">No records yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+  </main>
+
+  <!-- ── TOAST ── -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 hidden">
+    <div class="glassmorphism border border-white/10 rounded-xl px-5 py-3 text-sm font-medium shadow-xl animate-slide-up" id="toast-content"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

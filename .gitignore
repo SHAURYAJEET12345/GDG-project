@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.env
+*.env.local
+
+# dlib / ML model files (large binaries)
+*.dat
+*.dat.bz2
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node / Frontend build (if added later)
+node_modules/
+dist/
+.cache/
+
+# Known faces (user data — do not commit real photos)
+known_faces/*.jpg
+known_faces/*.jpeg
+known_faces/*.png
+known_faces/*.bmp
+!known_faces/.gitkeep

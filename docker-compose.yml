@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+
+  # ── Backend — FastAPI + OpenCV + face_recognition ──────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: attendance_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist SQLite attendance database
+      - ./backend/database.db:/app/backend/database.db
+      # Mount known faces so you can add/update without rebuilding
+      - ./known_faces:/app/known_faces
+    environment:
+      KNOWN_FACES_DIR: /app/known_faces
+      PREDICTOR_PATH:  /app/backend/shape_predictor_68_face_landmarks.dat
+      DB_PATH:         /app/backend/database.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - attendance_net
+
+  # ── Frontend — Nginx static file server ────────────────────────────────────
+  frontend:
+    image: nginx:1.25-alpine
+    container_name: attendance_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - attendance_net
+
+networks:
+  attendance_net:
+    driver: bridge

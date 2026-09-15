@@ -1,0 +1,8 @@
+# Place your reference face images in this directory.
+#
+# Naming convention:  <Person_Name>.jpg
+# Examples:
+#   John_Doe.jpg      →  name = "John Doe"
+#   Alice_Smith.jpeg  →  name = "Alice Smith"
+#
+# You can also register faces live via the web UI ➕ Register Face button.
